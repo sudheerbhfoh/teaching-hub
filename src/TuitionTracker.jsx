@@ -130,20 +130,23 @@ export default function TuitionTracker(){
   // ── Fetch from Supabase ──
   async function fetchClasses(){
     setLoading(true);
-    const threeMonthsAgo = new Date();
-threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 1);
-const sixMonthsAhead = new Date();
-sixMonthsAhead.setMonth(sixMonthsAhead.getMonth() + 6);
-
-const{data,error}=await supabase
-  .from("tuition_classes")
-  .select("*")
-  .gte("date", toISO(threeMonthsAgo))
-  .lte("date", toISO(sixMonthsAhead))
-  .order("date",{ascending:true})
-  .order("time",{ascending:true,nullsFirst:false});
+    const past=new Date(); past.setMonth(past.getMonth()-1);
+    const future=new Date(); future.setMonth(future.getMonth()+6);
+    const{data,error}=await supabase
+      .from("tuition_classes")
+      .select("*")
+      .gte("date", toISO(past))
+      .lte("date", toISO(future))
+      .order("date",{ascending:true})
+      .order("time",{ascending:true,nullsFirst:false});
     if(error){ showToast("❌ Could not load: "+error.message); }
-    else setClasses((data||[]).map(fromRow));
+    else {
+      const sorted=(data||[]).map(fromRow).sort((a,b)=>{
+        if(a.date!==b.date) return a.date.localeCompare(b.date);
+        return (a.time||"00:00").localeCompare(b.time||"00:00");
+      });
+      setClasses(sorted);
+    }
     setLoading(false);
   }
 
@@ -620,7 +623,7 @@ const{data,error}=await supabase
                     const col2=sc(cls.student.trim()),st2=STATUS_CONFIG[cls.status]||STATUS_CONFIG.scheduled;
                     return(<div key={cls.id} style={{...S.chip,background:col2.light,border:`1px solid ${st2.border}`}} onClick={()=>openEdit(cls)}>
                       <div style={{fontSize:"9px",fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cls.student}</div>
-                      <div style={{fontSize:"8px",color:"#777"}}>{formatTime(cls.time)} {st2.emoji}</div>
+                      <div style={{fontSize:"8px",color:"#777"}}>{formatTime(cls.time)}{cls.duration?" · "+cls.duration+"m":""} {st2.emoji}</div>
                     </div>);
                   })}
                   <div style={{fontSize:"8px",color:isT?"rgba(255,255,255,0.3)":"#e0e0e0",textAlign:"center",cursor:"pointer",marginTop:"2px"}} onClick={()=>{setForm({...emptyForm,date:iso});setEditId(null);setShowForm(true);}}>+ add</div>
@@ -646,7 +649,7 @@ const{data,error}=await supabase
                       <span style={{fontSize:"9px",padding:"1px 6px",borderRadius:"8px",background:pl.bg,color:pl.color,fontWeight:600}}>{pl.label}</span>
                       {cls.joinedViaApp&&<span style={{fontSize:"9px",padding:"1px 6px",borderRadius:"8px",background:"#E8F5E9",color:"#2E7D32",fontWeight:700}}>✅ Joined</span>}
                     </div>
-                    <div style={{fontSize:"11px",color:"#888",marginTop:"1px"}}>{cls.subject} · {formatTime(cls.time)} · {cls.duration}min {cls.joinedViaApp?`· ₹${cost.toFixed(0)} ${cls.isPaid?"✅":"⚠️"}`:""}</div>
+                    <div style={{fontSize:"11px",color:"#888",marginTop:"1px"}}>{cls.subject} · {formatTime(cls.time)} · {cls.duration} min {cls.joinedViaApp?`· ₹${cost.toFixed(0)} ${cls.isPaid?"✅":"⚠️"}`:""}</div>
                   </div>
                   <div style={{display:"flex",gap:"3px",flexShrink:0,flexWrap:"wrap",justifyContent:"flex-end"}}>
                     {!cls.joinedViaApp&&cls.link&&<button onClick={()=>joinClass(cls)} style={{padding:"4px 8px",borderRadius:"6px",border:"none",background:pl.bg,color:pl.color,cursor:"pointer",fontSize:"10px",fontWeight:700}}>Join ✅</button>}
