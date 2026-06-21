@@ -143,7 +143,9 @@ export default function TuitionTracker(){
     else {
       const sorted=(data||[]).map(fromRow).sort((a,b)=>{
         if(a.date!==b.date) return a.date.localeCompare(b.date);
-        return (a.time||"00:00").localeCompare(b.time||"00:00");
+        const tA=a.time||"00:00", tB=b.time||"00:00";
+        if(tA!==tB) return tA.localeCompare(tB);
+        return a.student.localeCompare(b.student); // stable fallback by name
       });
       setClasses(sorted);
     }
@@ -614,7 +616,11 @@ export default function TuitionTracker(){
           <div style={S.weekGrid}>
             {weekDates.map((date,idx)=>{
               const iso=weekISOs[idx],isT=iso===today;
-              const dc=classes.filter(c=>c.date===iso).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
+              const dc=classes.filter(c=>c.date===iso).sort((a,b)=>{
+                const tA=a.time||"00:00",tB=b.time||"00:00";
+                if(tA!==tB) return tA.localeCompare(tB);
+                return a.student.localeCompare(b.student);
+              });
               return(
                 <div key={iso} style={isT?S.dayColT:S.dayCol}>
                   <div style={{fontSize:"8px",fontWeight:700,textTransform:"uppercase",color:isT?"rgba(255,255,255,0.7)":"#bbb",textAlign:"center"}}>{DAYS_JS[date.getDay()]}</div>
@@ -632,7 +638,11 @@ export default function TuitionTracker(){
             })}
           </div>
           {weekISOs.map(iso=>{
-            const dc=classes.filter(c=>c.date===iso).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
+            const dc=classes.filter(c=>c.date===iso).sort((a,b)=>{
+              const tA=a.time||"00:00",tB=b.time||"00:00";
+              if(tA!==tB) return tA.localeCompare(tB);
+              return a.student.localeCompare(b.student);
+            });
             if(!dc.length) return null;
             const d=new Date(iso+"T00:00:00");
             return(<div key={iso} style={{marginBottom:"12px"}}>
