@@ -130,7 +130,7 @@ export default function TuitionTracker(){
   // ── Fetch from Supabase ──
   async function fetchClasses(){
     setLoading(true);
-    const{data,error}=await supabase.from("tuition_classes").select("*").order("date",{ascending:true}).order("time",{ascending:true});
+    const{data,error}=await supabase.from("tuition_classes").select("*").order("date",{ascending:true}).order("time",{ascending:true,nullsFirst:false});
     if(error){ showToast("❌ Could not load: "+error.message); }
     else setClasses((data||[]).map(fromRow));
     setLoading(false);
@@ -290,10 +290,63 @@ export default function TuitionTracker(){
     setClasses(cs=>cs.map(c=>c.student.trim()===name?{...c,feeMode:mode}:c));
   }
 
-  function openEdit(cls){ setForm({...emptyForm,...cls,recur:"none",recurUntil:"",customDays:[]}); setEditId(cls.id); setShowForm(true); }
+  // Bug fix 2: preserve exact time when editing — don't merge with emptyForm defaults
+  function openEdit(cls){
+    setForm({
+      student:      cls.student||"",
+      subject:      cls.subject||"",
+      date:         cls.date||"",
+      time:         cls.time||"",   // ← keep original time exactly
+      duration:     cls.duration||60,
+      platform:     cls.platform||"meet",
+      link:         cls.link||"",
+      whatsapp:     cls.whatsapp||"",
+      whiteboard:   cls.whiteboard||"",
+      rate:         cls.rate||500,
+      status:       cls.status||"scheduled",
+      isPaid:       cls.isPaid||false,
+      notes:        cls.notes||"",
+      feeMode:      cls.feeMode||"monthly",
+      joinedViaApp: cls.joinedViaApp||false,
+      recur:"none", recurUntil:"", customDays:[],
+    });
+    setEditId(cls.id);
+    setShowForm(true);
+  }
+
   function handleField(e){ const{name,value,type,checked}=e.target; setForm(f=>({...f,[name]:type==="checkbox"?checked:value})); }
   function toggleCustomDay(i){ setForm(f=>({...f,customDays:f.customDays.includes(i)?f.customDays.filter(d=>d!==i):[...f.customDays,i]})); }
   const recurCount=(!editId&&form.recur!=="none"&&form.recurUntil&&form.date)?generateRecurDates(form.date,form.recur,form.customDays,form.recurUntil).length:0;
+
+  // Bug fix 3: Bulk edit/reset all future classes for a student
+  const [showBulkEdit, setShowBulkEdit] = useState(null); // student name
+  const [bulkForm, setBulkForm] = useState({ time:"", duration:60, rate:500, platform:"meet", link:"", whatsapp:"", whiteboard:"", applyFrom: toISO(new Date()) });
+
+  async function applyBulkEdit(name){
+    const futureCls = classes.filter(c=>c.student.trim()===name && c.date>=bulkForm.applyFrom);
+    const ids = futureCls.map(c=>c.id);
+    if(!ids.length){ showToast("No future classes found!"); return; }
+    const updates = {};
+    if(bulkForm.time)       updates.time      = bulkForm.time;
+    if(bulkForm.duration)   updates.duration  = Number(bulkForm.duration);
+    if(bulkForm.rate)       updates.rate      = Number(bulkForm.rate);
+    if(bulkForm.platform)   updates.platform  = bulkForm.platform;
+    if(bulkForm.link)       updates.link      = bulkForm.link;
+    if(bulkForm.whatsapp)   updates.whatsapp  = bulkForm.whatsapp;
+    if(bulkForm.whiteboard) updates.whiteboard= bulkForm.whiteboard;
+    await supabase.from("tuition_classes").update(updates).in("id",ids);
+    setClasses(cs=>cs.map(c=>ids.includes(c.id)?{...c,...updates,isPaid:c.isPaid,joinedViaApp:c.joinedViaApp}:c));
+    setShowBulkEdit(null);
+    showToast(`✅ Updated ${ids.length} classes for ${name}!`);
+  }
+
+  async function resetStudentClasses(name){
+    if(!window.confirm(`Delete ALL classes for ${name}? This cannot be undone.`)) return;
+    const ids=classes.filter(c=>c.student.trim()===name).map(c=>c.id);
+    await supabase.from("tuition_classes").delete().in("id",ids);
+    setClasses(cs=>cs.filter(c=>c.student.trim()!==name));
+    showToast(`🗑 All classes for ${name} deleted!`);
+  }
 
   // ── Compact month calendar ──
   function MonthCalendar({name,year,month}){
@@ -363,6 +416,8 @@ export default function TuitionTracker(){
               {st.link&&<button onClick={()=>joinClass({...upcoming[0]||{},link:st.link,student:name})} style={{padding:"6px 10px",borderRadius:"8px",background:"rgba(255,255,255,0.9)",color:col.accent,border:"none",cursor:"pointer",fontSize:"11px",fontWeight:700}}>🔗 Join</button>}
               <button onClick={()=>{setForm({...emptyForm,student:name,link:st.link,whatsapp:st.whatsapp,whiteboard:st.whiteboard,rate:500,feeMode:fm});setEditId(null);setShowForm(true);}} style={{padding:"6px 10px",borderRadius:"8px",background:"rgba(255,255,255,0.2)",color:"#fff",border:"none",cursor:"pointer",fontSize:"11px",fontWeight:700}}>+ Add</button>
               <button onClick={()=>setShowSummary({name,month:now.getMonth(),year:now.getFullYear()})} style={{padding:"6px 10px",borderRadius:"8px",background:"rgba(255,255,255,0.2)",color:"#fff",border:"none",cursor:"pointer",fontSize:"11px",fontWeight:700}}>📊 Summary</button>
+              <button onClick={()=>{ setBulkForm({time:"",duration:60,rate:500,platform:"meet",link:st.link||"",whatsapp:st.whatsapp||"",whiteboard:st.whiteboard||"",applyFrom:toISO(new Date())}); setShowBulkEdit(name); }} style={{padding:"6px 10px",borderRadius:"8px",background:"rgba(255,255,255,0.2)",color:"#fff",border:"none",cursor:"pointer",fontSize:"11px",fontWeight:700}}>✏️ Bulk Edit</button>
+              <button onClick={()=>resetStudentClasses(name)} style={{padding:"6px 10px",borderRadius:"8px",background:"rgba(255,0,0,0.25)",color:"#fff",border:"none",cursor:"pointer",fontSize:"11px",fontWeight:700}}>🗑 Reset</button>
             </div>
           </div>
         </div>
@@ -545,7 +600,7 @@ export default function TuitionTracker(){
           <div style={S.weekGrid}>
             {weekDates.map((date,idx)=>{
               const iso=weekISOs[idx],isT=iso===today;
-              const dc=classes.filter(c=>c.date===iso).sort((a,b)=>a.time.localeCompare(b.time));
+              const dc=classes.filter(c=>c.date===iso).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
               return(
                 <div key={iso} style={isT?S.dayColT:S.dayCol}>
                   <div style={{fontSize:"8px",fontWeight:700,textTransform:"uppercase",color:isT?"rgba(255,255,255,0.7)":"#bbb",textAlign:"center"}}>{DAYS_JS[date.getDay()]}</div>
@@ -563,7 +618,7 @@ export default function TuitionTracker(){
             })}
           </div>
           {weekISOs.map(iso=>{
-            const dc=classes.filter(c=>c.date===iso).sort((a,b)=>a.time.localeCompare(b.time));
+            const dc=classes.filter(c=>c.date===iso).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
             if(!dc.length) return null;
             const d=new Date(iso+"T00:00:00");
             return(<div key={iso} style={{marginBottom:"12px"}}>
@@ -675,6 +730,57 @@ export default function TuitionTracker(){
           })}
         </>)}
       </div>
+
+      {/* Bulk Edit Modal */}
+      {showBulkEdit&&(
+        <div style={S.overlay} onClick={()=>setShowBulkEdit(null)}>
+          <div style={{...S.modal,maxWidth:"400px"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:"16px",fontWeight:700,marginBottom:"14px",color:"#1a1a2e"}}>✏️ Bulk Edit — {showBulkEdit}</div>
+            <div style={{fontSize:"12px",color:"#888",marginBottom:"12px",background:"#f8f9ff",borderRadius:"8px",padding:"8px 12px"}}>
+              Only fill in the fields you want to change. Leave others blank to keep existing values.
+            </div>
+            <label style={S.label}>Apply from date</label>
+            <input style={S.inp} type="date" value={bulkForm.applyFrom} onChange={e=>setBulkForm(f=>({...f,applyFrom:e.target.value}))}/>
+            <div style={S.g2}>
+              <div>
+                <label style={S.label}>New Time</label>
+                <input style={S.inp} type="time" value={bulkForm.time} onChange={e=>setBulkForm(f=>({...f,time:e.target.value}))}/>
+              </div>
+              <div>
+                <label style={S.label}>Duration (min)</label>
+                <input style={S.inp} type="number" value={bulkForm.duration} onChange={e=>setBulkForm(f=>({...f,duration:e.target.value}))} min="15" step="15"/>
+              </div>
+            </div>
+            <div style={S.g2}>
+              <div>
+                <label style={S.label}>Hourly Rate (₹)</label>
+                <input style={S.inp} type="number" value={bulkForm.rate} onChange={e=>setBulkForm(f=>({...f,rate:e.target.value}))} min="0" step="50"/>
+              </div>
+              <div>
+                <label style={S.label}>Platform</label>
+                <select style={S.inp} value={bulkForm.platform} onChange={e=>setBulkForm(f=>({...f,platform:e.target.value}))}>
+                  <option value="meet">Google Meet</option>
+                  <option value="zoom">Zoom</option>
+                  <option value="teams">MS Teams</option>
+                </select>
+              </div>
+            </div>
+            <label style={S.label}>Meeting Link</label>
+            <input style={S.inp} value={bulkForm.link} onChange={e=>setBulkForm(f=>({...f,link:e.target.value}))} placeholder="https://meet.google.com/..."/>
+            <label style={S.label}>WhatsApp Number</label>
+            <input style={S.inp} value={bulkForm.whatsapp} onChange={e=>setBulkForm(f=>({...f,whatsapp:e.target.value}))} placeholder="+91 98765 43210"/>
+            <label style={S.label}>Whiteboard Link</label>
+            <input style={S.inp} value={bulkForm.whiteboard} onChange={e=>setBulkForm(f=>({...f,whiteboard:e.target.value}))} placeholder="https://whiteboard.microsoft.com/..."/>
+            <div style={{fontSize:"11px",color:"#667eea",marginTop:"12px",fontWeight:600}}>
+              Will update {classes.filter(c=>c.student.trim()===showBulkEdit&&c.date>=bulkForm.applyFrom).length} classes from {bulkForm.applyFrom}
+            </div>
+            <div style={{display:"flex",gap:"8px",marginTop:"16px",justifyContent:"flex-end"}}>
+              <button onClick={()=>setShowBulkEdit(null)} style={{padding:"9px 16px",borderRadius:"10px",border:"1.5px solid #e5e7eb",background:"transparent",cursor:"pointer",fontSize:"13px",color:"#666"}}>Cancel</button>
+              <button onClick={()=>applyBulkEdit(showBulkEdit)} style={{padding:"9px 20px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#667eea,#764ba2)",color:"#fff",cursor:"pointer",fontSize:"13px",fontWeight:700}}>Apply Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Monthly Summary Modal */}
       {showSummary&&(()=>{
