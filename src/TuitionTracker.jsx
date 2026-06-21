@@ -130,7 +130,18 @@ export default function TuitionTracker(){
   // ── Fetch from Supabase ──
   async function fetchClasses(){
     setLoading(true);
-    const{data,error}=await supabase.from("tuition_classes").select("*").order("date",{ascending:true}).order("time",{ascending:true,nullsFirst:false});
+    const threeMonthsAgo = new Date();
+threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 1);
+const sixMonthsAhead = new Date();
+sixMonthsAhead.setMonth(sixMonthsAhead.getMonth() + 6);
+
+const{data,error}=await supabase
+  .from("tuition_classes")
+  .select("*")
+  .gte("date", toISO(threeMonthsAgo))
+  .lte("date", toISO(sixMonthsAhead))
+  .order("date",{ascending:true})
+  .order("time",{ascending:true,nullsFirst:false});
     if(error){ showToast("❌ Could not load: "+error.message); }
     else setClasses((data||[]).map(fromRow));
     setLoading(false);
