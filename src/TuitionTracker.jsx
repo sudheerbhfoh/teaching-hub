@@ -337,74 +337,121 @@ export default function TuitionTracker(){
   function toggleCustomDay(i){ setForm(f=>({...f,customDays:f.customDays.includes(i)?f.customDays.filter(d=>d!==i):[...f.customDays,i]})); }
   const recurCount=(!editId&&form.recur!=="none"&&form.recurUntil&&form.date)?generateRecurDates(form.date,form.recur,form.customDays,form.recurUntil).length:0;
 
-  // FIX 3: Generate shareable parent report as canvas image
-  function generateParentReport(name, month, year){
-    const data=monthlySummary(name,month,year);
-    const st=studentStats(name);
+  // Generate shareable parent report - supports custom date range
+  function generateParentReport(name, month, year, startDate, endDate){
+    // Build data based on range type
+    let data, rangeLabel, fileName;
+    if(startDate && endDate){
+      // Custom date range
+      const s=classes.filter(c=>{
+        if(c.student.trim()!==name) return false;
+        return c.date>=startDate && c.date<=endDate;
+      });
+      const conducted=s.filter(c=>c.joinedViaApp);
+      data={
+        total:s.length, conducted:conducted.length,
+        cancelled:s.filter(c=>c.status==="cancelled").length,
+        earned:conducted.filter(c=>c.isPaid).reduce((t,c)=>t+(c.duration/60)*(c.rate||0),0),
+        pending:conducted.filter(c=>!c.isPaid).reduce((t,c)=>t+(c.duration/60)*(c.rate||0),0),
+        conductedList:conducted,
+      };
+      rangeLabel=`${startDate} to ${endDate}`;
+      fileName=`${name}-${startDate}-to-${endDate}-report.png`;
+    } else {
+      data=monthlySummary(name,month,year);
+      rangeLabel=`${MONTHS[month]} ${year}`;
+      fileName=`${name}-${MONTHS[month]}-${year}-report.png`;
+    }
+
     const col=sc(name);
     const canvas=document.createElement("canvas");
-    canvas.width=800; canvas.height=600+data.conductedList.length*36;
+    canvas.width=800; canvas.height=620+data.conductedList.length*36;
     const ctx=canvas.getContext("2d");
 
     // Background
     ctx.fillStyle="#F8F9FF"; ctx.fillRect(0,0,canvas.width,canvas.height);
 
     // Header gradient
-    const grad=ctx.createLinearGradient(0,0,canvas.width,100);
+    const grad=ctx.createLinearGradient(0,0,canvas.width,120);
     grad.addColorStop(0,"#667eea"); grad.addColorStop(1,"#764ba2");
-    ctx.fillStyle=grad; ctx.fillRect(0,0,canvas.width,110);
+    ctx.fillStyle=grad; ctx.fillRect(0,0,canvas.width,120);
 
     // Title
     ctx.fillStyle="#fff"; ctx.font="bold 28px system-ui,sans-serif";
-    ctx.fillText("TuitionHub - Monthly Report",30,45);
+    ctx.fillText("TuitionHub - Class Report",30,48);
     ctx.font="16px system-ui,sans-serif"; ctx.fillStyle="rgba(255,255,255,0.85)";
-    ctx.fillText(`${name}  |  ${MONTHS[month]} ${year}`,30,80);
+    ctx.fillText(`${name}  |  ${rangeLabel}`,30,82);
+    ctx.font="12px system-ui,sans-serif"; ctx.fillStyle="rgba(255,255,255,0.65)";
+    ctx.fillText(`Generated on ${new Date().toLocaleDateString("en-IN")}`,30,106);
 
     // Stats boxes
     const boxes=[
-      {label:"Total Classes",value:data.total,bg:"#F3E5F5",col:"#6A1B9A"},
-      {label:"Conducted",value:data.conducted,bg:"#E8F5E9",col:"#2E7D32"},
-      {label:"Cancelled",value:data.cancelled,bg:"#FFEBEE",col:"#C62828"},
-      {label:"Collected",value:`Rs.${data.earned.toFixed(0)}`,bg:"#E8F5E9",col:"#2E7D32"},
-      {label:"Pending",value:`Rs.${data.pending.toFixed(0)}`,bg:"#FFEBEE",col:"#C62828"},
+      {label:"Total Classes", value:data.total,                         bg:"#F3E5F5", col:"#6A1B9A"},
+      {label:"Conducted",     value:data.conducted,                     bg:"#E8F5E9", col:"#2E7D32"},
+      {label:"Cancelled",     value:data.cancelled,                     bg:"#FFEBEE", col:"#C62828"},
+      {label:"Collected",     value:`Rs.${data.earned.toFixed(0)}`,     bg:"#E8F5E9", col:"#2E7D32"},
+      {label:"Pending",       value:`Rs.${data.pending.toFixed(0)}`,    bg:"#FFEBEE", col:"#C62828"},
     ];
     boxes.forEach((b,i)=>{
-      const x=20+i*154,y=130;
-      ctx.fillStyle=b.bg; ctx.beginPath(); ctx.roundRect(x,y,144,80,10); ctx.fill();
-      ctx.fillStyle=b.col; ctx.font="bold 26px system-ui,sans-serif"; ctx.textAlign="center";
-      ctx.fillText(b.value,x+72,y+42);
-      ctx.font="11px system-ui,sans-serif"; ctx.fillText(b.label,x+72,y+65);
+      const x=20+i*154, y=138;
+      ctx.fillStyle=b.bg;
+      ctx.beginPath(); ctx.roundRect(x,y,144,82,10); ctx.fill();
+      ctx.fillStyle=b.col; ctx.font="bold 24px system-ui,sans-serif"; ctx.textAlign="center";
+      ctx.fillText(b.value,x+72,y+44);
+      ctx.font="11px system-ui,sans-serif"; ctx.fillText(b.label,x+72,y+66);
       ctx.textAlign="left";
     });
 
     // Class list header
-    ctx.fillStyle="#1a1a2e"; ctx.font="bold 16px system-ui,sans-serif";
-    ctx.fillText("Classes Conducted:",30,250);
-    ctx.fillStyle="#e5e7eb"; ctx.fillRect(30,260,740,1);
+    ctx.fillStyle="#1a1a2e"; ctx.font="bold 15px system-ui,sans-serif";
+    ctx.fillText("Classes Conducted:",30,262);
+    ctx.fillStyle="#e5e7eb"; ctx.fillRect(30,272,740,1);
+
+    // Column headers
+    ctx.fillStyle="#888"; ctx.font="11px system-ui,sans-serif";
+    ctx.fillText("DATE",40,292);
+    ctx.fillText("TIME",220,292);
+    ctx.fillText("DURATION",310,292);
+    ctx.fillText("SUBJECT",420,292);
+    ctx.fillText("PAYMENT",610,292);
+    ctx.fillStyle="#e5e7eb"; ctx.fillRect(30,298,740,1);
 
     // Class rows
     data.conductedList.forEach((cls,i)=>{
-      const y=275+i*36;
-      if(i%2===0){ ctx.fillStyle="#f8f9ff"; ctx.fillRect(30,y-4,740,34); }
+      const y=316+i*36;
+      if(i%2===0){ ctx.fillStyle="#f0f2ff"; ctx.fillRect(30,y-10,740,34); }
       ctx.fillStyle="#333"; ctx.font="13px system-ui,sans-serif";
-      ctx.fillText(formatDate(cls.date),40,y+16);
-      ctx.fillText(formatTime(cls.time),220,y+16);
-      ctx.fillText(`${cls.duration} min`,320,y+16);
-      ctx.fillText(cls.subject||"",420,y+16);
+      ctx.fillText(formatDate(cls.date),40,y+10);
+      ctx.fillText(formatTime(cls.time),220,y+10);
+      ctx.fillText(`${cls.duration} min`,310,y+10);
+      ctx.fillText(cls.subject||"-",420,y+10);
+      const amt=(cls.duration/60)*(cls.rate||0);
       ctx.fillStyle=cls.isPaid?"#2E7D32":"#C62828";
-      ctx.fillText(cls.isPaid?"Paid":`Rs.${((cls.duration/60)*(cls.rate||0)).toFixed(0)} Due`,620,y+16);
+      ctx.fillText(cls.isPaid?`Rs.${amt.toFixed(0)} Paid`:`Rs.${amt.toFixed(0)} Due`,610,y+10);
       ctx.fillStyle="#333";
     });
 
+    // Total line
+    const totY=316+data.conductedList.length*36+10;
+    ctx.fillStyle="#e5e7eb"; ctx.fillRect(30,totY,740,1);
+    ctx.fillStyle="#1a1a2e"; ctx.font="bold 13px system-ui,sans-serif";
+    ctx.fillText(`Total: ${data.conductedList.length} classes conducted`,40,totY+22);
+    ctx.fillStyle="#2E7D32";
+    ctx.fillText(`Collected: Rs.${data.earned.toFixed(0)}`,350,totY+22);
+    ctx.fillStyle="#C62828";
+    ctx.fillText(`Pending: Rs.${data.pending.toFixed(0)}`,560,totY+22);
+
     // Footer
-    const footY=canvas.height-40;
-    ctx.fillStyle="#888"; ctx.font="12px system-ui,sans-serif";
-    ctx.fillText(`Generated by TuitionHub on ${new Date().toLocaleDateString("en-IN")}`,30,footY);
-    ctx.fillText("teaching-hub-gold.vercel.app",580,footY);
+    const footY=canvas.height-20;
+    ctx.fillStyle="#aaa"; ctx.font="11px system-ui,sans-serif";
+    ctx.fillText("Generated by TuitionHub",30,footY);
+    ctx.textAlign="right";
+    ctx.fillText("teaching-hub-gold.vercel.app",770,footY);
+    ctx.textAlign="left";
 
     // Download
     const link=document.createElement("a");
-    link.download=`${name}-${MONTHS[month]}-${year}-report.png`;
+    link.download=fileName;
     link.href=canvas.toDataURL("image/png");
     link.click();
     showToast(`Report downloaded for ${name}!`);
@@ -999,7 +1046,7 @@ export default function TuitionTracker(){
 
               <div style={{display:"flex",gap:"8px",justifyContent:"center",flexWrap:"wrap"}}>
                 {!isCustom&&<button onClick={()=>setShowSummary({name,month:month===0?11:month-1,year:month===0?year-1:year})} style={{padding:"8px 14px",borderRadius:"10px",border:"1px solid #e5e7eb",background:"transparent",cursor:"pointer",fontSize:"12px",color:"#666"}}>‹ Prev</button>}
-                <button onClick={()=>generateParentReport(name,month,year)} style={{padding:"8px 16px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#43e97b,#38f9d7)",color:"#000",cursor:"pointer",fontSize:"12px",fontWeight:700}}>📥 Download</button>
+                <button onClick={()=>generateParentReport(name,month,year,startDate,endDate)} style={{padding:"8px 16px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#43e97b,#38f9d7)",color:"#000",cursor:"pointer",fontSize:"12px",fontWeight:700}}>📥 Download</button>
                 <button onClick={()=>setShowSummary(null)} style={{padding:"8px 16px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#667eea,#764ba2)",color:"#fff",cursor:"pointer",fontSize:"12px",fontWeight:700}}>Close</button>
                 {!isCustom&&<button onClick={()=>setShowSummary({name,month:month===11?0:month+1,year:month===11?year+1:year})} style={{padding:"8px 14px",borderRadius:"10px",border:"1px solid #e5e7eb",background:"transparent",cursor:"pointer",fontSize:"12px",color:"#666"}}>Next ›</button>}
               </div>
