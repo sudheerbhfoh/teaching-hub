@@ -452,30 +452,45 @@ export default function TuitionTracker(){
     const col2=sc(cls.student.trim()),st2=STATUS_CONFIG[cls.status]||STATUS_CONFIG.scheduled,pl=PLATFORM_COLORS[cls.platform]||PLATFORM_COLORS.meet;
     const cost=(cls.duration/60)*(cls.rate||0);
     return(
-      <div style={{background:"#fff",borderRadius:compact?"10px":"14px",padding:compact?"10px 12px":"14px 16px",marginBottom:compact?"5px":"8px",boxShadow:"0 2px 6px rgba(0,0,0,0.06)",display:"flex",alignItems:"center",gap:"10px"}}>
-        <div style={{width:"3px",alignSelf:"stretch",borderRadius:"3px",background:col2.card,flexShrink:0}}/>
-        {!compact&&<div style={{width:"60px",flexShrink:0,textAlign:"center"}}>
+      <div style={{background:"#fff",borderRadius:compact?"10px":"14px",padding:compact?"10px 12px":"14px 16px",marginBottom:compact?"5px":"8px",boxShadow:"0 2px 8px rgba(0,0,0,0.07)",display:"flex",alignItems:"center",gap:"10px",borderLeft:`3px solid ${col2.accent}`}}>
+        {!compact&&<div style={{width:"64px",flexShrink:0,textAlign:"center",background:col2.light,borderRadius:"10px",padding:"6px 4px"}}>
           <div style={{fontSize:"15px",fontWeight:800,color:col2.accent}}>{formatTime(cls.time)}</div>
-          <div style={{fontSize:"10px",color:"#aaa"}}>{cls.duration}min</div>
+          <div style={{fontSize:"10px",color:"#aaa",marginTop:"2px"}}>{cls.duration}min</div>
         </div>}
         <div style={{flex:1,minWidth:0}}>
-          <div style={{display:"flex",alignItems:"center",gap:"5px",flexWrap:"wrap"}}>
-            <span style={{fontWeight:700,fontSize:compact?"13px":"15px"}}>{cls.student}</span>
-            <span style={{fontSize:"9px",padding:"1px 6px",borderRadius:"8px",background:st2.bg,color:st2.color,fontWeight:600}}>{st2.emoji} {st2.label}</span>
-            <span style={{fontSize:"9px",padding:"1px 6px",borderRadius:"8px",background:pl.bg,color:pl.color,fontWeight:600}}>{pl.label}</span>
-            {cls.joinedViaApp&&<span style={{fontSize:"9px",padding:"1px 6px",borderRadius:"8px",background:"#E8F5E9",color:"#2E7D32",fontWeight:700}}>Joined</span>}
+          <div style={{display:"flex",alignItems:"center",gap:"5px",flexWrap:"wrap",marginBottom:"3px"}}>
+            <span style={{fontWeight:700,fontSize:compact?"13px":"15px",color:"#1a1a2e"}}>{cls.student}</span>
+            <span style={{fontSize:"10px",padding:"2px 7px",borderRadius:"10px",background:st2.bg,color:st2.color,fontWeight:700,display:"inline-flex",alignItems:"center",gap:"3px"}}>{st2.emoji} {st2.label}</span>
+            <span style={{fontSize:"10px",padding:"2px 7px",borderRadius:"10px",background:pl.bg,color:pl.color,fontWeight:700}}>{pl.label}</span>
+            {cls.joinedViaApp&&<span style={{fontSize:"10px",padding:"2px 7px",borderRadius:"10px",background:"#E8F5E9",color:"#2E7D32",fontWeight:700}}>✅ Joined</span>}
           </div>
-          <div style={{fontSize:"11px",color:"#888",marginTop:"1px"}}>
-            {cls.subject}{compact?` · ${formatTime(cls.time)} · ${cls.duration}min`:""} {cls.joinedViaApp?`· Rs.${cost.toFixed(0)} ${cls.isPaid?"Paid":"Due"}`:""}
+          <div style={{fontSize:"12px",color:"#888"}}>
+            {cls.subject}{compact?` · ${formatTime(cls.time)} · ${cls.duration}min`:""}{cls.joinedViaApp?` · ₹${cost.toFixed(0)} ${cls.isPaid?"✅ Paid":"⚠️ Due"}`:""}
           </div>
         </div>
-        <div style={{display:"flex",gap:"3px",flexShrink:0,flexWrap:"wrap",justifyContent:"flex-end"}}>
-          {!cls.joinedViaApp&&cls.link&&<button onClick={()=>joinClass(cls)} style={{padding:"4px 8px",borderRadius:"6px",border:"none",background:pl.bg,color:pl.color,cursor:"pointer",fontSize:"10px",fontWeight:700}}>Join</button>}
-          {cls.joinedViaApp&&<button onClick={()=>togglePaid(cls.id)} style={{padding:"4px 8px",borderRadius:"6px",border:"none",background:cls.isPaid?"#E8F5E9":"#FFEBEE",color:cls.isPaid?"#2E7D32":"#C62828",cursor:"pointer",fontSize:"10px",fontWeight:700}}>{cls.isPaid?"Paid":"Due"}</button>}
-          {cls.whatsapp&&<a href={`https://wa.me/${cls.whatsapp.replace(/\D/g,"")}`} target="_blank" rel="noreferrer"><button style={{padding:"4px 8px",borderRadius:"6px",border:"none",background:"#E8F5E9",color:"#25D366",cursor:"pointer",fontSize:"10px",fontWeight:700}}>WA</button></a>}
-          {cls.whiteboard&&<a href={cls.whiteboard} target="_blank" rel="noreferrer"><button style={{padding:"4px 8px",borderRadius:"6px",border:"none",background:"#E3F2FD",color:"#1565C0",cursor:"pointer",fontSize:"10px"}}>WB</button></a>}
-          <button onClick={()=>openEdit(cls)} style={{padding:"4px 8px",borderRadius:"6px",border:"none",background:"#f5f5f5",color:"#555",cursor:"pointer",fontSize:"10px"}}>Edit</button>
-          <button onClick={()=>delClass(cls.id)} style={{padding:"4px 8px",borderRadius:"6px",border:"none",background:"#FFEBEE",color:"#C62828",cursor:"pointer",fontSize:"10px"}}>Del</button>
+        <div style={{display:"flex",gap:"4px",flexShrink:0,flexWrap:"wrap",justifyContent:"flex-end",alignItems:"center"}}>
+          {!cls.joinedViaApp&&cls.link&&(
+            <button onClick={()=>joinClass(cls)} style={{padding:"5px 10px",borderRadius:"8px",border:"none",background:pl.bg,color:pl.color,cursor:"pointer",fontSize:"11px",fontWeight:700,display:"flex",alignItems:"center",gap:"3px"}}>
+              🔗 Join
+            </button>
+          )}
+          {cls.joinedViaApp&&(
+            <button onClick={()=>togglePaid(cls.id)} style={{padding:"5px 10px",borderRadius:"8px",border:"none",background:cls.isPaid?"#E8F5E9":"#FFEBEE",color:cls.isPaid?"#2E7D32":"#C62828",cursor:"pointer",fontSize:"11px",fontWeight:700}}>
+              {cls.isPaid?"✅ Paid":"⚠️ Due"}
+            </button>
+          )}
+          {cls.whatsapp&&(
+            <a href={`https://wa.me/${cls.whatsapp.replace(/\D/g,"")}`} target="_blank" rel="noreferrer">
+              <button title="WhatsApp" style={{padding:"5px 8px",borderRadius:"8px",border:"none",background:"#E8F5E9",color:"#25D366",cursor:"pointer",fontSize:"15px",lineHeight:1}}>💬</button>
+            </a>
+          )}
+          {cls.whiteboard&&(
+            <a href={cls.whiteboard} target="_blank" rel="noreferrer">
+              <button title="Whiteboard" style={{padding:"5px 8px",borderRadius:"8px",border:"none",background:"#E3F2FD",color:"#1565C0",cursor:"pointer",fontSize:"15px",lineHeight:1}}>🖊️</button>
+            </a>
+          )}
+          <button onClick={()=>openEdit(cls)} title="Edit" style={{padding:"5px 8px",borderRadius:"8px",border:"none",background:"#f5f5f5",color:"#555",cursor:"pointer",fontSize:"15px",lineHeight:1}}>✏️</button>
+          <button onClick={()=>delClass(cls.id)} title="Delete" style={{padding:"5px 8px",borderRadius:"8px",border:"none",background:"#FFEBEE",color:"#C62828",cursor:"pointer",fontSize:"15px",lineHeight:1}}>🗑️</button>
         </div>
       </div>
     );
@@ -514,7 +529,7 @@ export default function TuitionTracker(){
               {st.whiteboard&&<a href={st.whiteboard} target="_blank" rel="noreferrer" style={{textDecoration:"none"}}><button style={{padding:"6px 10px",borderRadius:"8px",background:"rgba(255,255,255,0.2)",color:"#fff",border:"none",cursor:"pointer",fontSize:"11px",fontWeight:700}}>Whiteboard</button></a>}
               {st.link&&<button onClick={()=>joinClass({...upcoming[0]||{},link:st.link,student:name})} style={{padding:"6px 10px",borderRadius:"8px",background:"rgba(255,255,255,0.9)",color:col.accent,border:"none",cursor:"pointer",fontSize:"11px",fontWeight:700}}>Join</button>}
               <button onClick={()=>{setForm({...emptyForm,student:name,link:st.link,whatsapp:st.whatsapp,whiteboard:st.whiteboard,rate:500,feeMode:fm});setEditId(null);setShowForm(true);}} style={{padding:"6px 10px",borderRadius:"8px",background:"rgba(255,255,255,0.2)",color:"#fff",border:"none",cursor:"pointer",fontSize:"11px",fontWeight:700}}>+ Add</button>
-              <button onClick={()=>setShowSummary({name,month:now2.getMonth(),year:now2.getFullYear()})} style={{padding:"6px 10px",borderRadius:"8px",background:"rgba(255,255,255,0.2)",color:"#fff",border:"none",cursor:"pointer",fontSize:"11px",fontWeight:700}}>Summary</button>
+              <button onClick={()=>setShowSummary({name,month:now2.getMonth(),year:now2.getFullYear(),startDate:undefined,endDate:undefined})} style={{padding:"6px 10px",borderRadius:"8px",background:"rgba(255,255,255,0.2)",color:"#fff",border:"none",cursor:"pointer",fontSize:"11px",fontWeight:700}}>📊 Summary</button>
               <button onClick={()=>{ setBulkForm({time:"",duration:60,rate:500,platform:"meet",link:st.link||"",whatsapp:st.whatsapp||"",whiteboard:st.whiteboard||"",applyFrom:toISO(new Date())}); setShowBulkEdit(name); }} style={{padding:"6px 10px",borderRadius:"8px",background:"rgba(255,255,255,0.2)",color:"#fff",border:"none",cursor:"pointer",fontSize:"11px",fontWeight:700}}>Bulk Edit</button>
               <button onClick={()=>resetStudentClasses(name)} style={{padding:"6px 10px",borderRadius:"8px",background:"rgba(255,0,0,0.25)",color:"#fff",border:"none",cursor:"pointer",fontSize:"11px",fontWeight:700}}>Reset</button>
             </div>
@@ -836,7 +851,7 @@ export default function TuitionTracker(){
                 <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
                   <div style={{textAlign:"right"}}><div style={{fontSize:"15px",fontWeight:800,color:"#2E7D32"}}>Rs.{st2.earned.toFixed(0)}</div><div style={{fontSize:"9px",color:"#888"}}>Collected</div></div>
                   {st2.pending>0&&<div style={{textAlign:"right"}}><div style={{fontSize:"15px",fontWeight:800,color:"#C62828"}}>Rs.{st2.pending.toFixed(0)}</div><div style={{fontSize:"9px",color:"#888"}}>Pending</div></div>}
-                  <button onClick={()=>setShowSummary({name,month:new Date().getMonth(),year:new Date().getFullYear()})} style={{padding:"5px 10px",borderRadius:"8px",border:"none",background:col2.light,color:col2.accent,cursor:"pointer",fontSize:"11px",fontWeight:700}}>Summary</button>
+                  <button onClick={()=>setShowSummary({name,month:new Date().getMonth(),year:new Date().getFullYear(),startDate:undefined,endDate:undefined})} style={{padding:"5px 10px",borderRadius:"8px",border:"none",background:col2.light,color:col2.accent,cursor:"pointer",fontSize:"11px",fontWeight:700}}>📊 Summary</button>
                 </div>
               </div>
               {Object.entries(ledger).map(([period,data])=>(
@@ -891,13 +906,52 @@ export default function TuitionTracker(){
 
       {/* MONTHLY SUMMARY MODAL - FIX 3: includes class dates + download button */}
       {showSummary&&(()=>{
-        const{name,month,year}=showSummary,col2=sc(name),data=monthlySummary(name,month,year);
+        const{name,month,year,startDate,endDate}=showSummary;
+        const col2=sc(name);
+        // If custom date range, filter manually
+        function customSummary(){
+          if(!startDate||!endDate) return monthlySummary(name,month,year);
+          const s=classes.filter(c=>{
+            if(c.student.trim()!==name) return false;
+            return c.date>=startDate&&c.date<=endDate;
+          });
+          const conducted=s.filter(c=>c.joinedViaApp);
+          return{
+            total:s.length,conducted:conducted.length,
+            cancelled:s.filter(c=>c.status==="cancelled").length,
+            earned:conducted.filter(c=>c.isPaid).reduce((t,c)=>t+(c.duration/60)*(c.rate||0),0),
+            pending:conducted.filter(c=>!c.isPaid).reduce((t,c)=>t+(c.duration/60)*(c.rate||0),0),
+            conductedList:conducted,
+          };
+        }
+        const data=customSummary();
+        const isCustom=!!(startDate&&endDate);
+        const rangeLabel=isCustom?`${startDate} to ${endDate}`:`${MONTHS[month]} ${year}`;
         return(
           <div style={S.overlay} onClick={()=>setShowSummary(null)}>
-            <div style={{...S.modal,maxWidth:"420px"}} onClick={e=>e.stopPropagation()}>
+            <div style={{...S.modal,maxWidth:"440px"}} onClick={e=>e.stopPropagation()}>
               <div style={{background:col2.card,borderRadius:"12px",padding:"14px",marginBottom:"16px",textAlign:"center"}}>
                 <div style={{fontSize:"22px",fontWeight:800,color:"#fff"}}>{name}</div>
-                <div style={{fontSize:"13px",color:"rgba(255,255,255,0.8)"}}>Summary - {MONTHS[month]} {year}</div>
+                <div style={{fontSize:"13px",color:"rgba(255,255,255,0.8)"}}>Summary - {rangeLabel}</div>
+              </div>
+              {/* Date range filter */}
+              <div style={{background:"#f8f9ff",borderRadius:"10px",padding:"10px 12px",marginBottom:"14px",border:"1px solid #e5e7eb"}}>
+                <div style={{fontSize:"11px",fontWeight:700,color:"#555",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:"8px"}}>Filter by Date Range</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px"}}>
+                  <div>
+                    <label style={{fontSize:"10px",color:"#888",display:"block",marginBottom:"3px"}}>Start Date</label>
+                    <input type="date" style={{width:"100%",boxSizing:"border-box",padding:"6px 8px",borderRadius:"8px",border:"1px solid #e5e7eb",fontSize:"12px"}}
+                      value={startDate||""}
+                      onChange={e=>setShowSummary(s=>({...s,startDate:e.target.value}))}/>
+                  </div>
+                  <div>
+                    <label style={{fontSize:"10px",color:"#888",display:"block",marginBottom:"3px"}}>End Date</label>
+                    <input type="date" style={{width:"100%",boxSizing:"border-box",padding:"6px 8px",borderRadius:"8px",border:"1px solid #e5e7eb",fontSize:"12px"}}
+                      value={endDate||""}
+                      onChange={e=>setShowSummary(s=>({...s,endDate:e.target.value}))}/>
+                  </div>
+                </div>
+                {isCustom&&<button onClick={()=>setShowSummary(s=>({...s,startDate:undefined,endDate:undefined}))} style={{marginTop:"8px",padding:"4px 12px",borderRadius:"7px",border:"none",background:"#e5e7eb",color:"#555",cursor:"pointer",fontSize:"11px",fontWeight:600}}>Clear Filter</button>}
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px",marginBottom:"14px"}}>
                 {[
@@ -944,11 +998,10 @@ export default function TuitionTracker(){
               </div>
 
               <div style={{display:"flex",gap:"8px",justifyContent:"center",flexWrap:"wrap"}}>
-                <button onClick={()=>setShowSummary({name,month:month===0?11:month-1,year:month===0?year-1:year})} style={{padding:"8px 14px",borderRadius:"10px",border:"1px solid #e5e7eb",background:"transparent",cursor:"pointer",fontSize:"12px",color:"#666"}}>Prev</button>
-                {/* FIX 3: Download report button */}
-                <button onClick={()=>generateParentReport(name,month,year)} style={{padding:"8px 16px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#43e97b,#38f9d7)",color:"#000",cursor:"pointer",fontSize:"12px",fontWeight:700}}>Download Report</button>
+                {!isCustom&&<button onClick={()=>setShowSummary({name,month:month===0?11:month-1,year:month===0?year-1:year})} style={{padding:"8px 14px",borderRadius:"10px",border:"1px solid #e5e7eb",background:"transparent",cursor:"pointer",fontSize:"12px",color:"#666"}}>‹ Prev</button>}
+                <button onClick={()=>generateParentReport(name,month,year)} style={{padding:"8px 16px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#43e97b,#38f9d7)",color:"#000",cursor:"pointer",fontSize:"12px",fontWeight:700}}>📥 Download</button>
                 <button onClick={()=>setShowSummary(null)} style={{padding:"8px 16px",borderRadius:"10px",border:"none",background:"linear-gradient(135deg,#667eea,#764ba2)",color:"#fff",cursor:"pointer",fontSize:"12px",fontWeight:700}}>Close</button>
-                <button onClick={()=>setShowSummary({name,month:month===11?0:month+1,year:month===11?year+1:year})} style={{padding:"8px 14px",borderRadius:"10px",border:"1px solid #e5e7eb",background:"transparent",cursor:"pointer",fontSize:"12px",color:"#666"}}>Next</button>
+                {!isCustom&&<button onClick={()=>setShowSummary({name,month:month===11?0:month+1,year:month===11?year+1:year})} style={{padding:"8px 14px",borderRadius:"10px",border:"1px solid #e5e7eb",background:"transparent",cursor:"pointer",fontSize:"12px",color:"#666"}}>Next ›</button>}
               </div>
             </div>
           </div>
